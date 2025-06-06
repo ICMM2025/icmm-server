@@ -7,19 +7,22 @@ const notFound = require("./middlewares/not-found");
 const app = express();
 const testRoute = require("./routes/test-route");
 const mailerRoute = require("./routes/mailer-route");
+const authRoute = require("./routes/auth-route");
 
 // //middleware
 app.use(
-  cors({
-    origin: "https://icmm-web.onrender.com", // your frontend domain
-    credentials: true, // if you're using cookies or auth headers
-  })
+  cors()
+  //   cors({
+  //     origin: "https://icmm-web.onrender.com", // your frontend domain
+  //     credentials: true, // if you're using cookies or auth headers
+  //   })
 );
 app.use(express.json());
 
 // routing
 app.use("/api/test", testRoute);
 app.use("/api/mailer", mailerRoute);
+app.use("/api/auth", authRoute);
 app.use(notFound);
 app.use(errorMiddleware);
 

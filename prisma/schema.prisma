@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  userId       Int           @id @default(autoincrement()) @map("user_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  userName     String        @unique @map("user_name")
+  userPassword String        @map("user_password")
+
+  @@map("user")
+}
+
 model Test {
   testId Int    @id @default(autoincrement()) @map("test_id")
   test   String

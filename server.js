@@ -9,7 +9,12 @@ const testRoute = require("./routes/test-route");
 const mailerRoute = require("./routes/mailer-route");
 
 // //middleware
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: "https://icmm-web.onrender.com", // your frontend domain
+    credentials: true, // if you're using cookies or auth headers
+  })
+);
 app.use(express.json());
 
 // routing

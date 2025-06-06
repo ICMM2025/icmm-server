@@ -12,11 +12,10 @@ const productsRoute = require("./routes/products-route");
 
 // //middleware
 app.use(
-  cors()
-  //   cors({
-  //     origin: "https://icmm-web.onrender.com", // your frontend domain
-  //     credentials: true, // if you're using cookies or auth headers
-  //   })
+  cors({
+    origin: "https://icmm-web.onrender.com", // your frontend domain
+    credentials: true, // if you're using cookies or auth headers
+  })
 );
 app.use(express.json());
 

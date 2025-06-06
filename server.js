@@ -8,6 +8,7 @@ const app = express();
 const testRoute = require("./routes/test-route");
 const mailerRoute = require("./routes/mailer-route");
 const authRoute = require("./routes/auth-route");
+const productsRoute = require("./routes/products-route");
 
 // //middleware
 app.use(
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use("/api/test", testRoute);
 app.use("/api/mailer", mailerRoute);
 app.use("/api/auth", authRoute);
+app.use("/api/products", productsRoute);
 app.use(notFound);
 app.use(errorMiddleware);
 

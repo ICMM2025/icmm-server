@@ -8,13 +8,47 @@ datasource db {
 }
 
 model User {
-  userId       Int           @id @default(autoincrement()) @map("user_id")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  userName     String        @unique @map("user_name")
-  userPassword String        @map("user_password")
+  userId       Int      @id @default(autoincrement()) @map("user_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  userName     String   @unique @map("user_name")
+  userPassword String   @map("user_password")
 
   @@map("user")
+}
+
+model Product {
+  productId   Int          @id @default(autoincrement()) @map("product_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  name        String
+  productOpts ProductOpt[]
+  productPics ProductPic[]
+
+  @@map("product")
+}
+
+model ProductOpt {
+  productOptId Int      @id @default(autoincrement()) @map("product_opt_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  productId    Int      @map("product_id")
+  product      Product  @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  optName      String   @map("opt_name")
+
+  @@map("product_opt")
+}
+
+model ProductPic {
+  productPicId Int      @id @default(autoincrement()) @map("product_pic_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  productId    Int      @map("product_id")
+  product      Product  @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  rank         Int
+  url          String
+
+  @@map("product_pic")
 }
 
 model Test {

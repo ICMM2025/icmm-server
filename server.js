@@ -14,10 +14,15 @@ const productsRoute = require("./routes/products-route");
 app.use(
   // cors()
   cors({
-    origin: "https://icmm-web.onrender.com", // your frontend domain
-    credentials: true, // if you're using cookies or auth headers
+    origin: [
+      "https://icmm-web.onrender.com",
+      "http://localhost:5173",
+      "http://192.168.1.127:5173",
+    ],
+    credentials: true,
   })
 );
+
 app.use(express.json());
 
 // routing

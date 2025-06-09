@@ -5,3 +5,9 @@ const upload = require("../middlewares/upload");
 
 orderRoute.post("/add-order", orderController.addOrder);
 module.exports = orderRoute;
+orderRoute.post(
+  "/send-order",
+  upload.single("image"),
+  orderController.sendOrder
+);
+module.exports = orderRoute;

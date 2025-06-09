@@ -1,6 +1,9 @@
 const prisma = require("../models");
 const tryCatch = require("../utils/try-catch");
 const createError = require("../utils/create-error");
+const QRCode = require("qrcode");
+const generatePayload = require("promptpay-qr");
+const cloundinary = require("../utils/cloundinary");
 
 module.exports.addOrder = tryCatch(async (req, res, next) => {
   const { input, cart, totalAmt, grandTotalAmt, deliveryCost } = req.body;
@@ -60,7 +63,9 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     }
     expectedTotal += price * item.unit;
   }
-  expectedTotal = Math.round(expectedTotal * 100) / 100;
+  //   expectedTotal = Math.round(expectedTotal * 100) / 100;
+  console.log("totalAmt", totalAmt);
+  console.log("expectedTotal", expectedTotal);
 
   if (Number(totalAmt) !== expectedTotal) {
     createError(400, "errTotalAmtMismatch");
@@ -106,7 +111,26 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
   }
 
   //generate QR code
+  const PROMPTPAY_ID = process.env.PROMPTPAY_ID;
+  const payload = generatePayload(PROMPTPAY_ID, {
+    amount: Number(order.grandTotalAmt),
+    ref1: order.orderId.toString(),
+  });
+  const qrDataUrl = await QRCode.toDataURL(payload, { width: 400 });
   //upload to Cloudinary
+  const uploadRes = await cloundinary.uploader.upload(qrDataUrl, {
+    folder: "promptpay_qr",
+    public_id: `order_${order.orderId}_qr`,
+    width: 400,
+    height: 400,
+    crop: "limit",
+  });
+
+  //update url on DB
+  await prisma.order.update({
+    where: { orderId: order.orderId },
+    data: { payQrUrl: uploadRes.secure_url },
+  });
 
   res.json({
     // input,
@@ -115,8 +139,35 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     // grandTotalAmt,
     // deliveryCost,
     orderId: order.orderId,
-    qrUrl: "",
+    qrUrl: uploadRes.secure_url,
     grandTotalAmt: order.grandTotalAmt,
     msg: "Add Order successful...",
+  });
+});
+
+module.exports.sendOrder = tryCatch(async (req, res, next) => {
+  const { orderId } = req.body;
+  // Validate orderId and file
+  if (!orderId || isNaN(orderId)) {
+    createError(400, "errInvalidOrderId");
+  }
+  if (!req.file) {
+    createError(400, "errNoFileUploaded");
+  }
+  // Upload to Cloudinary
+  const result = await cloundinary.uploader.upload(req.file.path, {
+    folder: "from_user",
+    public_id: `order_${orderId}_user_upload`,
+    width: 1000,
+    height: 1000,
+    crop: "limit",
+  });
+  // Update order record with uploaded URL
+  await prisma.order.update({
+    where: { orderId: Number(orderId) },
+    data: { userUploadPicUrl: result.secure_url },
+  });
+  res.json({
+    msg: "Send Order successful...",
   });
 });

@@ -4,6 +4,7 @@ const createError = require("../utils/create-error");
 const QRCode = require("qrcode");
 const generatePayload = require("promptpay-qr");
 const cloundinary = require("../utils/cloundinary");
+const fs = require("fs/promises");
 
 module.exports.addOrder = tryCatch(async (req, res, next) => {
   const { input, cart, totalAmt, grandTotalAmt, deliveryCost } = req.body;
@@ -118,13 +119,19 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
   });
   const qrDataUrl = await QRCode.toDataURL(payload, { width: 400 });
   //upload to Cloudinary
-  const uploadRes = await cloundinary.uploader.upload(qrDataUrl, {
-    folder: "promptpay_qr",
-    public_id: `order_${order.orderId}_qr`,
-    width: 400,
-    height: 400,
-    crop: "limit",
-  });
+  let uploadRes;
+  try {
+    uploadRes = await cloundinary.uploader.upload(qrDataUrl, {
+      overwrite: true,
+      folder: "icmm/promptpay_qr",
+      public_id: `order_${order.orderId}_qr`,
+      width: 400,
+      height: 400,
+      crop: "limit",
+    });
+  } catch (err) {
+    return next(createError(500, "errFailToUploadQr"));
+  }
 
   //update url on DB
   await prisma.order.update({
@@ -155,13 +162,22 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
     createError(400, "errNoFileUploaded");
   }
   // Upload to Cloudinary
-  const result = await cloundinary.uploader.upload(req.file.path, {
-    folder: "from_user",
-    public_id: `order_${orderId}_user_upload`,
-    width: 1000,
-    height: 1000,
-    crop: "limit",
-  });
+  let result;
+  try {
+    result = await cloundinary.uploader.upload(req.file.path, {
+      overwrite: true,
+      folder: "icmm/from_user",
+      public_id: `order_${orderId}_user_upload`,
+      width: 1000,
+      height: 1000,
+      crop: "limit",
+    });
+    console.log(req.file.path);
+    await fs.unlink(req.file.path);
+  } catch (err) {
+    return next(createError(500, "errFailToUploadEvidence"));
+  }
+
   // Update order record with uploaded URL
   await prisma.order.update({
     where: { orderId: Number(orderId) },

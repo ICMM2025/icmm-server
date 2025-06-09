@@ -18,24 +18,27 @@ model User {
 }
 
 model Product {
-  productId   Int          @id @default(autoincrement()) @map("product_id")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  productId   Int           @id @default(autoincrement()) @map("product_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
   name        String
   productOpts ProductOpt[]
   productPics ProductPic[]
+  OrderDetail OrderDetail[]
 
   @@map("product")
+  @@index([productId])
 }
 
 model ProductOpt {
-  productOptId Int      @id @default(autoincrement()) @map("product_opt_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  productId    Int      @map("product_id")
-  product      Product  @relation(fields: [productId], references: [productId], onDelete: Cascade)
-  optName      String   @map("opt_name")
-  price Float?
+  productOptId Int           @id @default(autoincrement()) @map("product_opt_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  productId    Int           @map("product_id")
+  product      Product       @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  optName      String        @map("opt_name")
+  price        Float?
+  OrderDetail  OrderDetail[]
 
   @@map("product_opt")
 }
@@ -50,6 +53,55 @@ model ProductPic {
   url          String
 
   @@map("product_pic")
+}
+
+model Order {
+  orderId       Int      @id @default(autoincrement()) @map("order_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  name          String
+  email         String
+  phone         String
+  address       String
+  remark        String?
+  statusId      Int      @default(1)
+  status        Status   @relation(fields: [statusId], references: [statusId])
+  totalAmt      Float    @map("total_amt")
+  deliveryCost  Float    @map("delivery_cost")
+  grandTotalAmt Float    @map("grand_total_amt")
+  payQrUrl      String?  @map("pay_qr_url")
+
+  orderDetails OrderDetail[]
+
+  @@map("order")
+}
+
+model OrderDetail {
+  orderDetailId Int      @id @default(autoincrement()) @map("order_detail_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  orderId Int   @map("order_id")
+  order   Order @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  productId Int     @map("product_id")
+  product   Product @relation(fields: [productId], references: [productId])
+
+  productOptId Int        @map("product_opt_id")
+  productOpt   ProductOpt @relation(fields: [productOptId], references: [productOptId])
+
+  unit  Int
+  price Float
+
+  @@map("order_detail")
+}
+
+model Status {
+  statusId Int     @id @default(autoincrement()) @map("status_id")
+  name     String  @unique
+  orders   Order[]
+
+  @@map("status")
 }
 
 model Test {

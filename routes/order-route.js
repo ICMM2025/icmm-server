@@ -10,4 +10,5 @@ orderRoute.post(
   upload.single("image"),
   orderController.sendOrder
 );
+orderRoute.post("/check-order", orderController.checkOrder);
 module.exports = orderRoute;

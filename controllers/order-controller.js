@@ -177,10 +177,45 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
   // Update order record with uploaded URL
   const order = await prisma.order.update({
     where: { orderId: Number(orderId) },
-    data: { userUploadPicUrl: result.secure_url },
+    data: { userUploadPicUrl: result.secure_url, statusId: 2 },
   });
   res.json({
     order,
     msg: "Send Order successful...",
+  });
+});
+
+module.exports.checkOrder = tryCatch(async (req, res, next) => {
+  const { input } = req.body;
+  // validate
+  if (!input.orderNo || !input.email) {
+    createError(400, "errLackData");
+  }
+  const order = await prisma.order.findFirst({
+    where: {
+      orderId: input.orderNo,
+      email: input.email,
+    },
+    include: {
+      orderDetails: {
+        include: {
+          product: {
+            include: {
+              productPics: true, // correctly plural based on your schema
+            },
+          },
+          productOpt: true,
+        },
+      },
+      status: true,
+    },
+  });
+  if (!order) {
+    createError(400, "errOrderNotFound");
+  }
+
+  res.json({
+    order,
+    msg: "Check Order successful...",
   });
 });

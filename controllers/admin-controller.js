@@ -63,3 +63,48 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
   await workbook.xlsx.write(res);
   res.end();
 });
+
+module.exports.getAllOrders = tryCatch(async (req, res, next) => {
+  const orders = await prisma.order.findMany({
+    include: {
+      status: true,
+      orderDetails: {
+        include: {
+          product: {
+            include: {
+              productPics: true,
+            },
+          },
+          productOpt: true,
+        },
+      },
+    },
+  });
+  res.json({ orders, msg: "Get all orders successful..." });
+});
+module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
+  const { orderId } = req.body;
+  const order = await prisma.order.findFirst({
+    where: {
+      orderId: orderId,
+    },
+    include: {
+      orderDetails: {
+        include: {
+          product: {
+            include: {
+              productPics: true, // correctly plural based on your schema
+            },
+          },
+          productOpt: true,
+        },
+      },
+      status: true,
+    },
+  });
+
+  res.json({
+    order,
+    msg: "Check Order successful...",
+  });
+});

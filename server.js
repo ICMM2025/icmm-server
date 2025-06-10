@@ -10,6 +10,7 @@ const mailerRoute = require("./routes/mailer-route");
 const authRoute = require("./routes/auth-route");
 const productsRoute = require("./routes/products-route");
 const orderRoute = require("./routes/order-route");
+const adminRoute = require("./routes/admin-route");
 
 // //middleware
 app.use(
@@ -32,7 +33,7 @@ app.use("/api/mailer", mailerRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/products", productsRoute);
 app.use("/api/order", orderRoute);
-app.use("/api/mail", mailerRoute);
+app.use("/api/admin", adminRoute);
 app.use(notFound);
 app.use(errorMiddleware);
 

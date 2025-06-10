@@ -32,6 +32,7 @@ app.use("/api/mailer", mailerRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/products", productsRoute);
 app.use("/api/order", orderRoute);
+app.use("/api/mail", mailerRoute);
 app.use(notFound);
 app.use(errorMiddleware);
 

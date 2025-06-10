@@ -64,9 +64,6 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     }
     expectedTotal += price * item.unit;
   }
-  //   expectedTotal = Math.round(expectedTotal * 100) / 100;
-  console.log("totalAmt", totalAmt);
-  console.log("expectedTotal", expectedTotal);
 
   if (Number(totalAmt) !== expectedTotal) {
     createError(400, "errTotalAmtMismatch");
@@ -172,18 +169,18 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
       height: 1000,
       crop: "limit",
     });
-    console.log(req.file.path);
     await fs.unlink(req.file.path);
   } catch (err) {
     return next(createError(500, "errFailToUploadEvidence"));
   }
 
   // Update order record with uploaded URL
-  await prisma.order.update({
+  const order = await prisma.order.update({
     where: { orderId: Number(orderId) },
     data: { userUploadPicUrl: result.secure_url },
   });
   res.json({
+    order,
     msg: "Send Order successful...",
   });
 });

@@ -8,5 +8,10 @@ adminRoute.get("/all-orders", authenticate, adminController.getAllOrders);
 adminRoute.get("/export-excel", authenticate, adminController.exportExcel);
 adminRoute.post("/order-detail", authenticate, adminController.getOrderDetail);
 adminRoute.post("/add-note", authenticate, adminController.addNote);
+adminRoute.post(
+  "/edit-detail-order",
+  authenticate,
+  adminController.editDetailOrder
+);
 
 module.exports = adminRoute;

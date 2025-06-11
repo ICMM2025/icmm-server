@@ -71,6 +71,7 @@ model Order {
   grandTotalAmt    Float    @map("grand_total_amt")
   payQrUrl         String?  @map("pay_qr_url")
   userUploadPicUrl String?  @map("user_upload_pic_url")
+  isImportant      Boolean  @default(false) @map("is_important")
 
   orderDetails OrderDetail[]
   notes        Note[]

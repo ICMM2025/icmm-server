@@ -101,9 +101,14 @@ module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
       notes: true,
     },
   });
-
+  const status = await prisma.status.findMany({
+    orderBy: {
+      statusId: "asc",
+    },
+  });
   res.json({
     order,
+    status,
     msg: "Check Order successful...",
   });
 });
@@ -123,5 +128,40 @@ module.exports.addNote = tryCatch(async (req, res, next) => {
     // orderId,
     newNote,
     msg: "Add note successful...",
+  });
+});
+
+module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
+  const {
+    orderId,
+    statusId,
+    isImportant,
+    name,
+    email,
+    phone,
+    address,
+    remark,
+    totalAmt,
+    deliveryCost,
+    grandTotalAmt,
+  } = req.body;
+  await prisma.order.update({
+    where: { orderId: +orderId },
+    data: {
+      statusId,
+      isImportant,
+      name,
+      email,
+      phone,
+      address,
+      remark,
+      totalAmt,
+      deliveryCost,
+      grandTotalAmt,
+    },
+  });
+
+  res.json({
+    msg: "Edit detail order successful...",
   });
 });

@@ -73,7 +73,9 @@ model Order {
   userUploadPicUrl String?  @map("user_upload_pic_url")
 
   orderDetails OrderDetail[]
+  notes        Note[]
 
+  @@index([orderId])
   @@map("order")
 }
 
@@ -103,6 +105,18 @@ model Status {
   orders   Order[]
 
   @@map("status")
+}
+
+model Note {
+  noteId    Int      @id @default(autoincrement()) @map("note_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  noteTxt   String   @map("note_txt")
+  orderId   Int      @map("order_id")
+  order     Order    @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  isRobot   Boolean  @default(false) @map("is_robot")
+
+  @@map("note")
 }
 
 model Test {

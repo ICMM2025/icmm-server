@@ -66,22 +66,20 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
 
 module.exports.getAllOrders = tryCatch(async (req, res, next) => {
   const orders = await prisma.order.findMany({
-    include: {
+    select: {
+      statusId: true,
+      orderId: true,
       status: true,
-      orderDetails: {
-        include: {
-          product: {
-            include: {
-              productPics: true,
-            },
-          },
-          productOpt: true,
-        },
-      },
+      name: true,
+      email: true,
+      phone: true,
+      grandTotalAmt: true,
+      createdAt: true,
     },
   });
   res.json({ orders, msg: "Get all orders successful..." });
 });
+
 module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
   const { orderId } = req.body;
   const order = await prisma.order.findFirst({
@@ -100,11 +98,30 @@ module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
         },
       },
       status: true,
+      notes: true,
     },
   });
 
   res.json({
     order,
     msg: "Check Order successful...",
+  });
+});
+
+module.exports.addNote = tryCatch(async (req, res, next) => {
+  const { noteTxt, orderId } = req.body;
+  const newNote = await prisma.note.create({
+    data: {
+      orderId: Number(orderId),
+      noteTxt,
+      isRobot: false,
+    },
+  });
+
+  res.json({
+    // noteTxt,
+    // orderId,
+    newNote,
+    msg: "Add note successful...",
   });
 });

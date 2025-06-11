@@ -6,6 +6,20 @@ const generatePayload = require("promptpay-qr");
 const cloundinary = require("../utils/cloundinary");
 const fs = require("fs/promises");
 
+const maskName = (name) =>
+  name ? name[0] + "***" + name[name.length - 1] : "";
+const maskEmail = (email) => {
+  if (!email) return "";
+  const [user, domain] = email.split("@");
+  return user.slice(0, 3) + "***" + domain.slice(-3);
+};
+const maskPhone = (phone) =>
+  phone ? phone.slice(0, 3) + "***" + phone.slice(-2) : "";
+const maskAddress = (addr) => {
+  if (!addr || addr.length < 6) return addr;
+  return addr.slice(0, 5) + "***" + addr.slice(-3);
+};
+
 module.exports.addOrder = tryCatch(async (req, res, next) => {
   const { input, cart, totalAmt, grandTotalAmt, deliveryCost } = req.body;
   //   validate
@@ -135,6 +149,14 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     where: { orderId: order.orderId },
     data: { payQrUrl: uploadRes.secure_url },
   });
+  // add note
+  await prisma.note.create({
+    data: {
+      noteTxt: `User created new order [status = userNotPaid]`,
+      orderId: Number(order.orderId),
+      isRobot: true,
+    },
+  });
 
   res.json({
     // input,
@@ -179,6 +201,16 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
     where: { orderId: Number(orderId) },
     data: { userUploadPicUrl: result.secure_url, statusId: 2 },
   });
+
+  // add note
+  await prisma.note.create({
+    data: {
+      noteTxt: `User submit evidence [status = waitConfirm]`,
+      orderId: Number(orderId),
+      isRobot: true,
+    },
+  });
+
   res.json({
     order,
     msg: "Send Order successful...",
@@ -213,6 +245,12 @@ module.exports.checkOrder = tryCatch(async (req, res, next) => {
   if (!order) {
     createError(400, "errOrderNotFound");
   }
+
+  // mask sensitive data
+  order.name = maskName(order.name);
+  order.email = maskEmail(order.email);
+  order.phone = maskPhone(order.phone);
+  order.address = maskAddress(order.address);
 
   res.json({
     order,

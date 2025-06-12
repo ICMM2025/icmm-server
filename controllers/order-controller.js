@@ -3,7 +3,7 @@ const tryCatch = require("../utils/try-catch");
 const createError = require("../utils/create-error");
 const QRCode = require("qrcode");
 const generatePayload = require("promptpay-qr");
-const cloundinary = require("../utils/cloundinary");
+const cloudinary = require("../utils/cloudinary");
 const fs = require("fs/promises");
 
 const maskName = (name) =>
@@ -177,31 +177,59 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
   if (!orderId || isNaN(orderId)) {
     createError(400, "errInvalidOrderId");
   }
-  if (!req.file) {
+  if (!req.files) {
     createError(400, "errNoFileUploaded");
   }
+  // // Upload to Cloudinary
+  // let result;
+  // try {
+  //   result = await cloundinary.uploader.upload(req.file.path, {
+  //     overwrite: true,
+  //     folder: "icmm/from_user",
+  //     public_id: `order_${orderId}_user_upload`,
+  //     width: 1000,
+  //     height: 1000,
+  //     crop: "limit",
+  //   });
+  //   await fs.unlink(req.file.path);
+  // } catch (err) {
+  //   return next(createError(500, "errFailToUploadEvidence"));
+  // }
   // Upload to Cloudinary
-  let result;
-  try {
-    result = await cloundinary.uploader.upload(req.file.path, {
-      overwrite: true,
-      folder: "icmm/from_user",
-      public_id: `order_${orderId}_user_upload`,
-      width: 1000,
-      height: 1000,
-      crop: "limit",
-    });
-    await fs.unlink(req.file.path);
-  } catch (err) {
-    return next(createError(500, "errFailToUploadEvidence"));
+  const haveFiles = !!req.files;
+  let uploadResults = [];
+  if (haveFiles) {
+    for (const file of req.files) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          overwrite: true,
+          folder: "icmm/from_user",
+          public_id: `order_${orderId}_user_upload`,
+          width: 1000,
+          height: 1000,
+          crop: "limit",
+        });
+        uploadResults.push(uploadResult.secure_url);
+        await fs.unlink(file.path);
+      } catch (err) {
+        return next(createError(500, "errFailToUploadEvidence"));
+      }
+    }
   }
 
   // Update order record with uploaded URL
   const order = await prisma.order.update({
     where: { orderId: Number(orderId) },
-    data: { userUploadPicUrl: result.secure_url, statusId: 2 },
+    data: { statusId: 2 },
   });
 
+  // update pic
+  for (const rs of uploadResults) {
+    await prisma.order.update({
+      where: { orderId: Number(orderId) },
+      data: { userUploadPicUrl: rs },
+    });
+  }
   // add note
   await prisma.note.create({
     data: {

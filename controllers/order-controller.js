@@ -132,7 +132,7 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
   //upload to Cloudinary
   let uploadRes;
   try {
-    uploadRes = await cloundinary.uploader.upload(qrDataUrl, {
+    uploadRes = await cloudinary.uploader.upload(qrDataUrl, {
       overwrite: true,
       folder: "icmm/promptpay_qr",
       public_id: `order_${order.orderId}_qr`,

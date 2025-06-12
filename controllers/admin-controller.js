@@ -7,27 +7,31 @@ const fs = require("fs/promises");
 const path = require("path");
 
 module.exports.exportExcel = tryCatch(async (req, res, next) => {
-  const data = await prisma.order.findMany({
-    include: {
-      status: true,
-      orderDetails: {
+  const [orders, notes, adminPhotos, products, productOpts, productPics] =
+    await Promise.all([
+      prisma.order.findMany({
         include: {
-          product: {
+          status: true,
+          orderDetails: {
             include: {
-              productPics: true,
+              product: true,
+              productOpt: true,
             },
           },
-          productOpt: true,
         },
-      },
-    },
-  });
+      }),
+      prisma.note.findMany(),
+      prisma.adminPhoto.findMany(),
+      prisma.product.findMany(),
+      prisma.productOpt.findMany(),
+      prisma.productPic.findMany(),
+    ]);
 
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Orders");
 
-  // Add headers
-  sheet.addRow([
+  // Orders Sheet
+  const orderSheet = workbook.addWorksheet("order");
+  orderSheet.addRow([
     "Order ID",
     "Name",
     "Email",
@@ -37,13 +41,10 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
     "Qty",
     "Price",
     "Status",
-    "Product Pic URL",
   ]);
-
-  // Add data
-  data.forEach((order) => {
+  orders.forEach((order) => {
     order.orderDetails.forEach((detail) => {
-      sheet.addRow([
+      orderSheet.addRow([
         order.orderId,
         order.name,
         order.email,
@@ -53,9 +54,80 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
         detail.unit,
         detail.price,
         order.status.name,
-        detail.product.productPics[0]?.url || "",
       ]);
     });
+  });
+
+  // Order Detail Sheet
+  const detailSheet = workbook.addWorksheet("order_detail");
+  detailSheet.addRow([
+    "Order Detail ID",
+    "Order ID",
+    "Product ID",
+    "Product Opt ID",
+    "Qty",
+    "Price",
+  ]);
+  orders.forEach((order) => {
+    order.orderDetails.forEach((detail) => {
+      detailSheet.addRow([
+        detail.orderDetailId,
+        order.orderId,
+        detail.productId,
+        detail.productOptId,
+        detail.unit,
+        detail.price,
+      ]);
+    });
+  });
+
+  // Note Sheet
+  const noteSheet = workbook.addWorksheet("note");
+  noteSheet.addRow(["Note ID", "Order ID", "Note Text", "Is Robot"]);
+  notes.forEach((note) => {
+    noteSheet.addRow([note.noteId, note.orderId, note.noteTxt, note.isRobot]);
+  });
+
+  // Admin Photo Sheet
+  const adminPhotoSheet = workbook.addWorksheet("admin_photo");
+  adminPhotoSheet.addRow(["Photo ID", "Order ID", "Pic URL"]);
+  adminPhotos.forEach((photo) => {
+    adminPhotoSheet.addRow([photo.adminPhotoId, photo.orderId, photo.picUrl]);
+  });
+
+  // Product Sheet (Join Product and ProductOpt)
+  const productSheet = workbook.addWorksheet("product");
+  productSheet.addRow([
+    "Product ID",
+    "Product Name",
+    "Option ID",
+    "Option Name",
+    "Option Price",
+  ]);
+  products.forEach((product) => {
+    const opts = productOpts.filter(
+      (opt) => opt.productId === product.productId
+    );
+    if (opts.length > 0) {
+      opts.forEach((opt) => {
+        productSheet.addRow([
+          product.productId,
+          product.name,
+          opt.productOptId,
+          opt.optName,
+          opt.price,
+        ]);
+      });
+    } else {
+      productSheet.addRow([product.productId, product.name, "", "", ""]);
+    }
+  });
+
+  // Product Pic Sheet
+  const picSheet = workbook.addWorksheet("product_pic");
+  picSheet.addRow(["Pic ID", "Product ID", "Rank", "URL"]);
+  productPics.forEach((pic) => {
+    picSheet.addRow([pic.productPicId, pic.productId, pic.rank, pic.url]);
   });
 
   res.setHeader(
@@ -236,4 +308,28 @@ module.exports.editDetailAdminPhotoOrder = tryCatch(async (req, res, next) => {
   res.json({
     msg: "Edit detial admin photo successful...",
   });
+});
+
+module.exports.editCart = tryCatch(async (req, res, next) => {
+  const { orderId, newCart } = req.body;
+
+  await prisma.$transaction(async (tx) => {
+    // Delete existing order details for the order
+    await tx.orderDetail.deleteMany({
+      where: { orderId: Number(orderId) },
+    });
+
+    // Insert each new cart item
+    await tx.orderDetail.createMany({
+      data: newCart.map((item) => ({
+        orderId: Number(orderId),
+        productId: item.productId,
+        productOptId: item.productOptId,
+        unit: item.unit,
+        price: parseFloat(item.price.toFixed(2)), // force 2 decimal precision
+      })),
+    });
+  });
+
+  res.json({ msg: "Cart updated successfully." });
 });

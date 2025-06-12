@@ -21,5 +21,5 @@ adminRoute.post(
   adminController.editDetailAdminPhotoOrder
 );
 adminRoute.post("/forward-status", authenticate, adminController.forwardStatus);
-
+adminRoute.post("/edit-cart", authenticate, adminController.editCart);
 module.exports = adminRoute;

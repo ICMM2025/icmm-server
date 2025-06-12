@@ -19,7 +19,7 @@ app.use(
     origin: [
       "https://icmm-web.onrender.com",
       // "http://localhost:5173",
-      // "http://192.168.1.126:5173",
+      // "http://192.168.1.138:5173",
     ],
     credentials: true,
   })

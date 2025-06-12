@@ -230,7 +230,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
     grandTotalAmt,
     emsTracking,
   } = req.body;
-  await prisma.order.update({
+  const order = await prisma.order.update({
     where: { orderId: +orderId },
     data: {
       statusId,
@@ -245,6 +245,16 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
       grandTotalAmt,
       emsTracking,
     },
+    select: {
+      status: true,
+    },
+  });
+  await prisma.note.create({
+    data: {
+      noteTxt: `Admin edited order detail [status = ${order.status.name}]`,
+      orderId: Number(orderId),
+      isRobot: true,
+    },
   });
 
   res.json({
@@ -255,12 +265,24 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
 module.exports.forwardStatus = tryCatch(async (req, res, next) => {
   const { statusId, orderId } = req.body;
 
-  await prisma.order.update({
+  const order = await prisma.order.update({
     where: {
       orderId,
     },
     data: {
       statusId,
+    },
+    select: {
+      status: true,
+    },
+  });
+  console.log(order);
+  // note
+  await prisma.note.create({
+    data: {
+      noteTxt: `Admin forword order [status = ${order.status.name}]`,
+      orderId: Number(orderId),
+      isRobot: true,
     },
   });
 
@@ -305,6 +327,7 @@ module.exports.editDetailAdminPhotoOrder = tryCatch(async (req, res, next) => {
       data: { orderId: Number(orderId), picUrl: rs },
     });
   }
+
   res.json({
     msg: "Edit detial admin photo successful...",
   });
@@ -331,5 +354,13 @@ module.exports.editCart = tryCatch(async (req, res, next) => {
     });
   });
 
+  // note
+  await prisma.note.create({
+    data: {
+      noteTxt: `Admin revise cart's detail`,
+      orderId: Number(orderId),
+      isRobot: true,
+    },
+  });
   res.json({ msg: "Cart updated successfully." });
 });

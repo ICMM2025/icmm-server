@@ -72,9 +72,11 @@ model Order {
   payQrUrl         String?  @map("pay_qr_url")
   userUploadPicUrl String?  @map("user_upload_pic_url")
   isImportant      Boolean  @default(false) @map("is_important")
+  emsTracking      String?  @map("ems_tracking")
 
   orderDetails OrderDetail[]
   notes        Note[]
+  adminPhotos  AdminPhoto[]
 
   @@index([orderId])
   @@map("order")
@@ -118,6 +120,17 @@ model Note {
   isRobot   Boolean  @default(false) @map("is_robot")
 
   @@map("note")
+}
+
+model AdminPhoto {
+  adminPhotoId Int      @id @default(autoincrement()) @map("note_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  orderId      Int      @map("order_id")
+  order        Order    @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  picUrl       String   @map("pic_url")
+
+  @@map("admin_photo")
 }
 
 model Test {

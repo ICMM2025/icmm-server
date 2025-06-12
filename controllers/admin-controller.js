@@ -2,6 +2,9 @@ const prisma = require("../models");
 const tryCatch = require("../utils/try-catch");
 const createError = require("../utils/create-error");
 const ExcelJS = require("exceljs");
+const cloudinary = require("../utils/cloudinary");
+const fs = require("fs/promises");
+const path = require("path");
 
 module.exports.exportExcel = tryCatch(async (req, res, next) => {
   const data = await prisma.order.findMany({
@@ -75,9 +78,17 @@ module.exports.getAllOrders = tryCatch(async (req, res, next) => {
       phone: true,
       grandTotalAmt: true,
       createdAt: true,
+      isImportant: true,
+      notes: true,
     },
   });
-  res.json({ orders, msg: "Get all orders successful..." });
+
+  // Add `haveNote` field manually
+  const modifiedOrders = orders.map((order) => ({
+    ...order,
+    haveNote: order.notes.some((note) => note.isRobot === false),
+  }));
+  res.json({ orders: modifiedOrders, msg: "Get all orders successful..." });
 });
 
 module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
@@ -99,6 +110,7 @@ module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
       },
       status: true,
       notes: true,
+      adminPhotos: true,
     },
   });
   const status = await prisma.status.findMany({
@@ -144,6 +156,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
     totalAmt,
     deliveryCost,
     grandTotalAmt,
+    emsTracking,
   } = req.body;
   await prisma.order.update({
     where: { orderId: +orderId },
@@ -158,10 +171,69 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
       totalAmt,
       deliveryCost,
       grandTotalAmt,
+      emsTracking,
     },
   });
 
   res.json({
     msg: "Edit detail order successful...",
+  });
+});
+
+module.exports.forwardStatus = tryCatch(async (req, res, next) => {
+  const { statusId, orderId } = req.body;
+
+  await prisma.order.update({
+    where: {
+      orderId,
+    },
+    data: {
+      statusId,
+    },
+  });
+
+  res.json({
+    msg: "Add note successful...",
+  });
+});
+
+module.exports.editDetailAdminPhotoOrder = tryCatch(async (req, res, next) => {
+  const { orderId } = req.body;
+  // Validate orderId and file
+  if (!orderId || isNaN(orderId)) {
+    createError(400, "errInvalidOrderId");
+  }
+  if (!req.files) {
+    createError(400, "errNoFileUploaded");
+  }
+  // Upload to Cloudinary
+  const haveFiles = !!req.files;
+  let uploadResults = [];
+  if (haveFiles) {
+    for (const file of req.files) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          overwrite: true,
+          folder: "icmm/admin_photo",
+          public_id: path.parse(file.path).name,
+          width: 1000,
+          height: 1000,
+          crop: "limit",
+        });
+        uploadResults.push(uploadResult.secure_url);
+        await fs.unlink(file.path);
+      } catch (err) {
+        return next(createError(500, "errFailToUploadEvidence"));
+      }
+    }
+  }
+  // update pic
+  for (const rs of uploadResults) {
+    await prisma.adminPhoto.create({
+      data: { orderId: Number(orderId), picUrl: rs },
+    });
+  }
+  res.json({
+    msg: "Edit detial admin photo successful...",
   });
 });

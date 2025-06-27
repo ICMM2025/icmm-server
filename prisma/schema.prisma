@@ -8,11 +8,13 @@ datasource db {
 }
 
 model User {
-  userId       Int      @id @default(autoincrement()) @map("user_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  userName     String   @unique @map("user_name")
-  userPassword String   @map("user_password")
+  userId       Int          @id @default(autoincrement()) @map("user_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  userName     String       @unique @map("user_name")
+  userPassword String       @map("user_password")
+  email        String?
+  vertualRuns  VirtualRun[]
 
   @@map("user")
 }
@@ -131,6 +133,30 @@ model AdminPhoto {
   picUrl       String   @map("pic_url")
 
   @@map("admin_photo")
+}
+
+model VirtualRun {
+  virtualRunId      Int              @id @default(autoincrement()) @map("virtual_run_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  userId            Int
+  user              User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userUploadPicUrl  String
+  aiDate            DateTime?
+  aiDistance        Float?
+  aiTotalTime       String? // Prisma has no Time type; use String or Int (seconds)
+  confirmedDate     DateTime?
+  confirmedDistance Float?
+  confirmedTime     String? // Same as above
+  status            VirtualRunStatus @default(uploaded)
+
+  @@map("virtual_run")
+}
+
+enum VirtualRunStatus {
+  uploaded
+  confirm
+  declined
 }
 
 model Test {

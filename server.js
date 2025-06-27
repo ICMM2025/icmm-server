@@ -11,6 +11,7 @@ const authRoute = require("./routes/auth-route");
 const productsRoute = require("./routes/products-route");
 const orderRoute = require("./routes/order-route");
 const adminRoute = require("./routes/admin-route");
+const uploadRoute = require("./routes/upload-route");
 
 // //middleware
 app.use(
@@ -18,7 +19,7 @@ app.use(
   cors({
     origin: [
       "https://icmm-web.onrender.com",
-      // "http://localhost:5173",
+      "http://localhost:5173",
       // "http://192.168.1.138:5173",
     ],
     credentials: true,
@@ -34,6 +35,8 @@ app.use("/api/auth", authRoute);
 app.use("/api/products", productsRoute);
 app.use("/api/order", orderRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/upload", uploadRoute);
+
 app.use(notFound);
 app.use(errorMiddleware);
 

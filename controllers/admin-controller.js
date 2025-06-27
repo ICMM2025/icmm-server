@@ -152,15 +152,21 @@ module.exports.getAllOrders = tryCatch(async (req, res, next) => {
       createdAt: true,
       isImportant: true,
       notes: true,
+      orderDetails: true,
     },
   });
+  const productOpts = await prisma.productOpt.findMany();
 
   // Add `haveNote` field manually
   const modifiedOrders = orders.map((order) => ({
     ...order,
     haveNote: order.notes.some((note) => note.isRobot === false),
   }));
-  res.json({ orders: modifiedOrders, msg: "Get all orders successful..." });
+  res.json({
+    productOpts,
+    orders: modifiedOrders,
+    msg: "Get all orders successful...",
+  });
 });
 
 module.exports.getOrderDetail = tryCatch(async (req, res, next) => {

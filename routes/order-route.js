@@ -12,4 +12,5 @@ orderRoute.post(
 );
 orderRoute.post("/check-order", orderController.checkOrder);
 orderRoute.post("/apply-coupon", orderController.applyCoupon);
+
 module.exports = orderRoute;

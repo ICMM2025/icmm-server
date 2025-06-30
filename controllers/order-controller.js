@@ -283,12 +283,25 @@ module.exports.checkOrder = tryCatch(async (req, res, next) => {
 
   // mask sensitive data
   order.name = maskName(order.name);
-  order.email = maskEmail(order.email);
+  // order.email = maskEmail(order.email);
   order.phone = maskPhone(order.phone);
   order.address = maskAddress(order.address);
 
+  // coupon
+  let coupon = null;
+  if (order.discountCode) {
+    coupon = await prisma.coupon.findFirst({
+      where: { discountCode: order.discountCode },
+      select: {
+        discountType: true,
+        discountAmt: true,
+        maxDiscountAmt: true,
+      },
+    });
+  }
   res.json({
     order,
+    coupon,
     msg: "Check Order successful...",
   });
 });

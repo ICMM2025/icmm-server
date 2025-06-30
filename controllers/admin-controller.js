@@ -153,6 +153,7 @@ module.exports.getAllOrders = tryCatch(async (req, res, next) => {
       isImportant: true,
       notes: true,
       orderDetails: true,
+      remark: true,
     },
   });
   const productOpts = await prisma.productOpt.findMany();
@@ -196,9 +197,22 @@ module.exports.getOrderDetail = tryCatch(async (req, res, next) => {
       statusId: "asc",
     },
   });
+  // coupon
+  let coupon = null;
+  if (order.discountCode) {
+    coupon = await prisma.coupon.findFirst({
+      where: { discountCode: order.discountCode },
+      select: {
+        discountType: true,
+        discountAmt: true,
+        maxDiscountAmt: true,
+      },
+    });
+  }
   res.json({
     order,
     status,
+    coupon,
     msg: "Check Order successful...",
   });
 });

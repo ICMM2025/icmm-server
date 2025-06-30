@@ -88,10 +88,10 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
   const delivery = Number(deliveryCost);
   const grandTotal = Number(grandTotalAmt);
 
-  if (
-    Math.round((total + delivery) * 100) / 100 !==
-    Math.round(grandTotal * 100) / 100
-  ) {
+  const discountAmt = input.discountAmt || 0;
+  const expectedGrandTotal =
+    Math.round((total + delivery - discountAmt) * 100) / 100;
+  if (expectedGrandTotal !== Math.round(grandTotal * 100) / 100) {
     createError(400, "errGrandTotalMismatch");
   }
 
@@ -106,6 +106,18 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
       totalAmt,
       deliveryCost,
       grandTotalAmt,
+      discountCode: input.code || null,
+      discountAmt: input.discountAmt || 0,
+    },
+  });
+
+  // update inactive coupon
+  await prisma.coupon.updateMany({
+    where: {
+      discountCode: input.code,
+    },
+    data: {
+      isActive: false,
     },
   });
 
@@ -159,11 +171,6 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
   });
 
   res.json({
-    // input,
-    // cart,
-    // totalAmt,
-    // grandTotalAmt,
-    // deliveryCost,
     orderId: order.orderId,
     qrUrl: uploadRes.secure_url,
     grandTotalAmt: order.grandTotalAmt,
@@ -283,5 +290,30 @@ module.exports.checkOrder = tryCatch(async (req, res, next) => {
   res.json({
     order,
     msg: "Check Order successful...",
+  });
+});
+
+module.exports.applyCoupon = tryCatch(async (req, res, next) => {
+  const { discountCode } = req.body;
+  //validate
+  // code is blank
+  if (!discountCode || discountCode.trim() === "") {
+    createError(400, "errPlaseFillCode");
+  }
+  // code not active
+  const coupon = await prisma.coupon.findFirst({
+    where: {
+      discountCode: discountCode.trim(),
+      isActive: true,
+    },
+  });
+
+  if (!coupon) {
+    createError(400, "errCodeNotFound");
+  }
+
+  res.json({
+    coupon,
+    msg: "Apply coupon successful...",
   });
 });

@@ -75,6 +75,8 @@ model Order {
   userUploadPicUrl String?  @map("user_upload_pic_url")
   isImportant      Boolean  @default(false) @map("is_important")
   emsTracking      String?  @map("ems_tracking")
+  discountCode     String?  @map("discount_code")
+  discountAmt      Float?   @map("discount_amt")
 
   orderDetails OrderDetail[]
   notes        Note[]
@@ -133,6 +135,19 @@ model AdminPhoto {
   picUrl       String   @map("pic_url")
 
   @@map("admin_photo")
+}
+
+model Coupon {
+  couponId       Int      @id @default(autoincrement()) @map("coupon_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  discountCode   String   @map("discount_code")
+  discountType   Int      @map("discount_type")
+  discountAmt    Float    @map("discount_amt")
+  maxDiscountAmt Float    @map("max_discount_amt")
+  isActive       Boolean  @default(false) @map("is_active")
+
+  @@map("coupon")
 }
 
 model VirtualRun {

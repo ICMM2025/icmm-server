@@ -154,6 +154,7 @@ module.exports.getAllOrders = tryCatch(async (req, res, next) => {
       notes: true,
       orderDetails: true,
       remark: true,
+      isCheckSlipFail: true,
     },
   });
   const productOpts = await prisma.productOpt.findMany();
@@ -249,6 +250,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
     deliveryCost,
     grandTotalAmt,
     emsTracking,
+    isCheckSlipFail,
   } = req.body;
   const order = await prisma.order.update({
     where: { orderId: +orderId },
@@ -264,6 +266,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
       deliveryCost,
       grandTotalAmt,
       emsTracking,
+      isCheckSlipFail,
     },
     select: {
       status: true,

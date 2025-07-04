@@ -77,6 +77,13 @@ model Order {
   emsTracking      String?  @map("ems_tracking")
   discountCode     String?  @map("discount_code")
   discountAmt      Float?   @map("discount_amt")
+  isCheckSlipFail  Boolean  @default(true) @map("is_check_slip_fail")
+  slipAmt          Float?   @map("slip_amt")
+  slipSenderName   String?  @map("slip_sender_anme")
+  slipSenderAcc    String?  @map("slip_sender_acc")
+  slipReceiverName String?  @map("slip_receiver_name")
+  slipReceiverAcc  String?  @map("slip_receiver_acc")
+  checkSlipNote    String?  @map("check_slip_note")
 
   orderDetails OrderDetail[]
   notes        Note[]

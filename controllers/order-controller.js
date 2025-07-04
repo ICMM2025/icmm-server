@@ -1,10 +1,15 @@
+require("dotenv").config();
+const fs = require("fs");
+const fsp = require("fs/promises");
+const path = require("path");
+const axios = require("axios");
 const prisma = require("../models");
 const tryCatch = require("../utils/try-catch");
 const createError = require("../utils/create-error");
 const QRCode = require("qrcode");
 const generatePayload = require("promptpay-qr");
 const cloudinary = require("../utils/cloudinary");
-const fs = require("fs/promises");
+const FormData = require("form-data");
 
 const maskName = (name) =>
   name ? name[0] + "***" + name[name.length - 1] : "";
@@ -179,76 +184,124 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
 });
 
 module.exports.sendOrder = tryCatch(async (req, res, next) => {
+  const RECEIVE_ACC = "XXXXXXXXXXX1501";
   const { orderId } = req.body;
-  // Validate orderId and file
-  if (!orderId || isNaN(orderId)) {
-    createError(400, "errInvalidOrderId");
-  }
-  if (!req.files) {
-    createError(400, "errNoFileUploaded");
-  }
-  // // Upload to Cloudinary
-  // let result;
-  // try {
-  //   result = await cloundinary.uploader.upload(req.file.path, {
-  //     overwrite: true,
-  //     folder: "icmm/from_user",
-  //     public_id: `order_${orderId}_user_upload`,
-  //     width: 1000,
-  //     height: 1000,
-  //     crop: "limit",
-  //   });
-  //   await fs.unlink(req.file.path);
-  // } catch (err) {
-  //   return next(createError(500, "errFailToUploadEvidence"));
-  // }
-  // Upload to Cloudinary
-  const haveFiles = !!req.files;
+
+  if (!orderId || isNaN(orderId)) throw createError(400, "errInvalidOrderId");
+  if (!req.files || req.files.length === 0)
+    throw createError(400, "errNoFileUploaded");
+
   let uploadResults = [];
-  if (haveFiles) {
-    for (const file of req.files) {
-      try {
-        const uploadResult = await cloudinary.uploader.upload(file.path, {
-          overwrite: true,
-          folder: "icmm/from_user",
-          public_id: `order_${orderId}_user_upload`,
-          width: 1000,
-          height: 1000,
-          crop: "limit",
-        });
-        uploadResults.push(uploadResult.secure_url);
-        await fs.unlink(file.path);
-      } catch (err) {
-        return next(createError(500, "errFailToUploadEvidence"));
-      }
+  let localFilePaths = [];
+
+  // 1. Upload to Cloudinary & collect local paths
+  for (const file of req.files) {
+    try {
+      const uploadResult = await cloudinary.uploader.upload(file.path, {
+        overwrite: true,
+        folder: "icmm/from_user",
+        public_id: `order_${orderId}_user_upload`,
+        width: 1000,
+        height: 1000,
+        crop: "limit",
+      });
+      uploadResults.push(uploadResult.secure_url);
+      localFilePaths.push(file.path);
+    } catch (err) {
+      return next(createError(500, "errFailToUploadEvidence"));
     }
   }
 
-  // Update order record with uploaded URL
-  const order = await prisma.order.update({
+  const imageUrl = uploadResults[0];
+  const localFilePath = localFilePaths[0];
+
+  // 2. Update order image + status
+  let order = await prisma.order.update({
     where: { orderId: Number(orderId) },
-    data: { statusId: 2 },
+    data: {
+      userUploadPicUrl: imageUrl,
+      statusId: 2,
+    },
   });
 
-  // update pic
-  for (const rs of uploadResults) {
-    await prisma.order.update({
-      where: { orderId: Number(orderId) },
-      data: { userUploadPicUrl: rs },
-    });
+  // 3. Send to EasySlip with file upload
+  let slipData = {};
+  let checkSlipNote = null;
+  let easyslip = {};
+
+  try {
+    const form = new FormData();
+    form.append("file", fs.createReadStream(localFilePath));
+
+    easyslip = await axios.post(
+      "https://developer.easyslip.com/api/v1/verify",
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.EASYSLIP_API_KEY}`,
+          ...form.getHeaders(),
+        },
+      }
+    );
+
+    if (easyslip.status === 200 && easyslip.data?.data) {
+      const result = easyslip.data.data;
+
+      const slipAmount = Number(result.amount?.amount || 0);
+      const senderName = result.sender?.account?.name?.th || "";
+      const senderAcc = result.sender?.account?.bank?.account || "";
+      const receiverName = result.receiver?.account?.name?.th || "";
+      const receiverAcc = result.receiver?.account?.proxy?.account || "";
+
+      const isSlipFail =
+        slipAmount !== Number(order.grandTotalAmt) ||
+        receiverAcc !== RECEIVE_ACC;
+
+      slipData = {
+        slipAmt: slipAmount,
+        slipSenderName: senderName,
+        slipSenderAcc: senderAcc,
+        slipReceiverName: receiverName,
+        slipReceiverAcc: receiverAcc,
+        isCheckSlipFail: isSlipFail,
+        checkSlipNote: `Matched = ${!isSlipFail}`,
+      };
+    } else {
+      checkSlipNote = `EasySlip response invalid (status: ${easyslip.status})`;
+    }
+  } catch (err) {
+    checkSlipNote = `EasySlip error: ${err.message}`;
   }
-  // add note
+
+  // 4. Update slip info on order
+  await prisma.order.update({
+    where: { orderId: Number(orderId) },
+    data: {
+      ...slipData,
+      checkSlipNote,
+    },
+  });
+
+  // 5. Add system note
   await prisma.note.create({
     data: {
-      noteTxt: `User submit evidence [status = waitConfirm]`,
+      noteTxt: checkSlipNote
+        ? `User submitted slip. EasySlip error logged.`
+        : `User submitted slip. AI check: ${
+            slipData.isCheckSlipFail ? "Mismatch" : "Matched"
+          }.`,
       orderId: Number(orderId),
       isRobot: true,
     },
   });
 
+  // 6. Cleanup file
+  await fsp.unlink(localFilePath).catch(() => {});
+
+  // 7. Respond to frontend
   res.json({
-    order,
-    msg: "Send Order successful...",
+    orderId,
+    msg: "Send Order successful. Awaiting admin verification.",
   });
 });
 

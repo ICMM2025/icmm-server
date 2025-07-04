@@ -191,32 +191,27 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
   if (!req.files || req.files.length === 0)
     throw createError(400, "errNoFileUploaded");
 
-  let uploadResults = [];
-  let localFilePaths = [];
+  const file = req.files[0]; // assuming 1 file
+  const localFilePath = file.path;
 
-  // 1. Upload to Cloudinary & collect local paths
-  for (const file of req.files) {
-    try {
-      const uploadResult = await cloudinary.uploader.upload(file.path, {
-        overwrite: true,
-        folder: "icmm/from_user",
-        public_id: `order_${orderId}_user_upload`,
-        width: 1000,
-        height: 1000,
-        crop: "limit",
-      });
-      uploadResults.push(uploadResult.secure_url);
-      localFilePaths.push(file.path);
-    } catch (err) {
-      return next(createError(500, "errFailToUploadEvidence"));
-    }
+  // 1. Upload to Cloudinary
+  let imageUrl;
+  try {
+    const uploadResult = await cloudinary.uploader.upload(localFilePath, {
+      overwrite: true,
+      folder: "icmm/from_user",
+      public_id: `order_${orderId}_user_upload`,
+      width: 1000,
+      height: 1000,
+      crop: "limit",
+    });
+    imageUrl = uploadResult.secure_url;
+  } catch (err) {
+    return next(createError(500, "errFailToUploadEvidence"));
   }
 
-  const imageUrl = uploadResults[0];
-  const localFilePath = localFilePaths[0];
-
-  // 2. Update order image + status
-  let order = await prisma.order.update({
+  // 2. Update order: image + status
+  await prisma.order.update({
     where: { orderId: Number(orderId) },
     data: {
       userUploadPicUrl: imageUrl,
@@ -224,16 +219,16 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
     },
   });
 
-  // 3. Send to EasySlip with file upload
+  // 3. Send to EasySlip – via file stream
   let slipData = {};
   let checkSlipNote = null;
-  let easyslip = {};
+  let easyslipData = null;
 
   try {
     const form = new FormData();
     form.append("file", fs.createReadStream(localFilePath));
 
-    easyslip = await axios.post(
+    const easyslip = await axios.post(
       "https://developer.easyslip.com/api/v1/verify",
       form,
       {
@@ -244,6 +239,8 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
       }
     );
 
+    easyslipData = easyslip.data;
+
     if (easyslip.status === 200 && easyslip.data?.data) {
       const result = easyslip.data.data;
 
@@ -253,8 +250,13 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
       const receiverName = result.receiver?.account?.name?.th || "";
       const receiverAcc = result.receiver?.account?.proxy?.account || "";
 
+      // get fresh order for grandTotalAmt
+      const currentOrder = await prisma.order.findUnique({
+        where: { orderId: Number(orderId) },
+      });
+
       const isSlipFail =
-        slipAmount !== Number(order.grandTotalAmt) ||
+        slipAmount !== Number(currentOrder.grandTotalAmt) ||
         receiverAcc !== RECEIVE_ACC;
 
       slipData = {
@@ -273,16 +275,21 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
     checkSlipNote = `EasySlip error: ${err.message}`;
   }
 
-  // 4. Update slip info on order
+  // 4. Update slip info (always)
   await prisma.order.update({
     where: { orderId: Number(orderId) },
     data: {
       ...slipData,
-      checkSlipNote,
+      ...(checkSlipNote !== null ? { checkSlipNote } : {}),
     },
   });
 
-  // 5. Add system note
+  // ✅ Refetch updated order to get fresh checkSlipNote
+  const order = await prisma.order.findUnique({
+    where: { orderId: Number(orderId) },
+  });
+
+  // 5. Create note
   await prisma.note.create({
     data: {
       noteTxt: checkSlipNote
@@ -295,12 +302,15 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
     },
   });
 
-  // 6. Cleanup file
+  // 6. Clean up file
   await fsp.unlink(localFilePath).catch(() => {});
 
-  // 7. Respond to frontend
+  // 7. Response
   res.json({
     orderId,
+    checkSlipNote: order.checkSlipNote,
+    isCheckSlipFail: order.isCheckSlipFail,
+    slipAmt: order.slipAmt,
     msg: "Send Order successful. Awaiting admin verification.",
   });
 });

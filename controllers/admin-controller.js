@@ -252,6 +252,15 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
     emsTracking,
     isCheckSlipFail,
   } = req.body;
+
+  // Validate required numeric fields
+  const toValidate = { totalAmt, deliveryCost, grandTotalAmt };
+  for (const [key, value] of Object.entries(toValidate)) {
+    if (value !== null && value !== undefined && isNaN(Number(value))) {
+      throw createError(400, `${key} must be a number`);
+    }
+  }
+
   const order = await prisma.order.update({
     where: { orderId: +orderId },
     data: {
@@ -262,9 +271,9 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
       phone,
       address,
       remark,
-      totalAmt,
-      deliveryCost,
-      grandTotalAmt,
+      totalAmt: Number(totalAmt),
+      deliveryCost: Number(deliveryCost),
+      grandTotalAmt: Number(grandTotalAmt),
       emsTracking,
       isCheckSlipFail,
     },
@@ -272,6 +281,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
       status: true,
     },
   });
+
   await prisma.note.create({
     data: {
       noteTxt: `Admin edited order detail [status = ${order.status.name}]`,
@@ -280,9 +290,7 @@ module.exports.editDetailOrder = tryCatch(async (req, res, next) => {
     },
   });
 
-  res.json({
-    msg: "Edit detail order successful...",
-  });
+  res.json({ msg: "Order updated" });
 });
 
 module.exports.forwardStatus = tryCatch(async (req, res, next) => {

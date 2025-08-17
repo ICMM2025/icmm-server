@@ -106,7 +106,7 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
       name: input.name,
       email: input.email,
       phone: input.phone,
-      address: input.address, // fixed typo here
+      address: input.address,
       remark: input.remark || "",
       totalAmt,
       deliveryCost,
@@ -146,6 +146,7 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     ref1: order.orderId.toString(),
   });
   const qrDataUrl = await QRCode.toDataURL(payload, { width: 400 });
+
   //upload to Cloudinary
   let uploadRes;
   try {

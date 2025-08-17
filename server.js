@@ -12,6 +12,7 @@ const productsRoute = require("./routes/products-route");
 const orderRoute = require("./routes/order-route");
 const adminRoute = require("./routes/admin-route");
 const uploadRoute = require("./routes/upload-route");
+const couponRoute = require("./routes/coupon-route");
 
 // //middleware
 app.use(
@@ -36,6 +37,7 @@ app.use("/api/products", productsRoute);
 app.use("/api/order", orderRoute);
 app.use("/api/admin", adminRoute);
 app.use("/api/upload", uploadRoute);
+app.use("/api/coupon", couponRoute);
 
 app.use(notFound);
 app.use(errorMiddleware);

@@ -65,10 +65,10 @@ model Order {
   email              String
   phone              String
   address            String
-  addressSubDistrict String?
-  addressDistrict    String?
-  addressProvince    String?
-  addressPostCode    String?
+  addressSubDistrict String?  @map("address_sub_district")
+  addressDistrict    String?  @map("address_district")
+  addressProvince    String?  @map("address_province")
+  addressPostCode    String?  @map("address_postcode")
   remark             String?
   statusId           Int      @default(1)
   status             Status   @relation(fields: [statusId], references: [statusId])

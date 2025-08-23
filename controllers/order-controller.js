@@ -45,7 +45,11 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     !input?.name?.trim() ||
     !input?.email?.trim() ||
     !input?.phone?.trim() ||
-    !input?.address?.trim()
+    !input?.address?.trim() ||
+    !input?.addressSubDistrict?.trim() ||
+    !input?.addressDistrict?.trim() ||
+    !input?.addressProvince?.trim() ||
+    !input?.addressPostCode?.trim()
   ) {
     createError(400, "errInputMissing");
   }
@@ -107,6 +111,10 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
       email: input.email,
       phone: input.phone,
       address: input.address,
+      addressSubDistrict: input.addressSubDistrict,
+      addressDistrict: input.addressDistrict,
+      addressProvince: input.addressProvince,
+      addressPostCode: input.addressPostCode,
       remark: input.remark || "",
       totalAmt,
       deliveryCost,

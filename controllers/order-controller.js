@@ -184,10 +184,17 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
     },
   });
 
+  // --- RETURN ORDER WITH DETAILS ---
+  const fullOrder = await prisma.order.findUnique({
+    where: { orderId: order.orderId },
+    include: { orderDetails: { include: { productOpt: true } } },
+  });
+
   res.json({
     orderId: order.orderId,
     qrUrl: uploadRes.secure_url,
     grandTotalAmt: order.grandTotalAmt,
+    fullOrder: fullOrder,
     msg: "Add Order successful...",
   });
 });

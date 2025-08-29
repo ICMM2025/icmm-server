@@ -7,64 +7,106 @@ const fs = require("fs/promises");
 const path = require("path");
 
 module.exports.exportExcel = tryCatch(async (req, res, next) => {
-  const [orders, notes, adminPhotos, products, productOpts, productPics] =
-    await Promise.all([
-      prisma.order.findMany({
-        include: {
-          status: true,
-          orderDetails: {
-            include: {
-              product: true,
-              productOpt: true,
-            },
-          },
-        },
-      }),
-      prisma.note.findMany(),
-      prisma.adminPhoto.findMany(),
-      prisma.product.findMany(),
-      prisma.productOpt.findMany(),
-      prisma.productPic.findMany(),
-    ]);
+  // Fetch all tables with relations
+  const [
+    orders,
+    notes,
+    adminPhotos,
+    products,
+    productOpts,
+    productPics,
+    statuses,
+    coupons,
+  ] = await Promise.all([
+    prisma.order.findMany({
+      include: {
+        orderDetails: { include: { product: true, productOpt: true } },
+        status: true,
+      },
+    }),
+    prisma.note.findMany(),
+    prisma.adminPhoto.findMany(),
+    prisma.product.findMany(),
+    prisma.productOpt.findMany(),
+    prisma.productPic.findMany(),
+    prisma.status.findMany(),
+    prisma.coupon.findMany(),
+  ]);
 
   const workbook = new ExcelJS.Workbook();
 
-  // Orders Sheet
+  // --- Orders Sheet ---
   const orderSheet = workbook.addWorksheet("order");
   orderSheet.addRow([
     "Order ID",
     "Name",
     "Email",
     "Phone",
-    "Product",
-    "Option",
-    "Qty",
-    "Price",
+    "Address",
+    "Sub District",
+    "District",
+    "Province",
+    "Postcode",
+    "Remark",
     "Status",
+    "Total Amt",
+    "Delivery Cost",
+    "Grand Total",
+    "Pay QR URL",
+    "User Upload Pic",
+    "Important",
+    "EMS Tracking",
+    "Discount Code",
+    "Discount Amt",
+    "Check Slip Fail",
+    "Slip Amt",
+    "Slip Sender Name",
+    "Slip Sender Acc",
+    "Slip Receiver Name",
+    "Slip Receiver Acc",
+    "Check Slip Note",
   ]);
   orders.forEach((order) => {
-    order.orderDetails.forEach((detail) => {
-      orderSheet.addRow([
-        order.orderId,
-        order.name,
-        order.email,
-        order.phone,
-        detail.product.name,
-        detail.productOpt.optName,
-        detail.unit,
-        detail.price,
-        order.status.name,
-      ]);
-    });
+    orderSheet.addRow([
+      order.orderId,
+      order.name,
+      order.email,
+      order.phone,
+      order.address,
+      order.addressSubDistrict,
+      order.addressDistrict,
+      order.addressProvince,
+      order.addressPostCode,
+      order.remark,
+      order.status?.name,
+      order.totalAmt,
+      order.deliveryCost,
+      order.grandTotalAmt,
+      order.payQrUrl,
+      order.userUploadPicUrl,
+      order.isImportant,
+      order.emsTracking,
+      order.discountCode,
+      order.discountAmt,
+      order.isCheckSlipFail,
+      order.slipAmt,
+      order.slipSenderName,
+      order.slipSenderAcc,
+      order.slipReceiverName,
+      order.slipReceiverAcc,
+      order.checkSlipNote,
+    ]);
   });
 
-  // Order Detail Sheet
+  // --- Order Detail Sheet ---
   const detailSheet = workbook.addWorksheet("order_detail");
   detailSheet.addRow([
     "Order Detail ID",
     "Order ID",
     "Product ID",
+    "Product Name",
     "Product Opt ID",
+    "Option Name",
     "Qty",
     "Price",
   ]);
@@ -74,28 +116,30 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
         detail.orderDetailId,
         order.orderId,
         detail.productId,
+        detail.product?.name,
         detail.productOptId,
+        detail.productOpt?.optName,
         detail.unit,
         detail.price,
       ]);
     });
   });
 
-  // Note Sheet
+  // --- Note Sheet ---
   const noteSheet = workbook.addWorksheet("note");
   noteSheet.addRow(["Note ID", "Order ID", "Note Text", "Is Robot"]);
   notes.forEach((note) => {
     noteSheet.addRow([note.noteId, note.orderId, note.noteTxt, note.isRobot]);
   });
 
-  // Admin Photo Sheet
+  // --- Admin Photo Sheet ---
   const adminPhotoSheet = workbook.addWorksheet("admin_photo");
   adminPhotoSheet.addRow(["Photo ID", "Order ID", "Pic URL"]);
   adminPhotos.forEach((photo) => {
     adminPhotoSheet.addRow([photo.adminPhotoId, photo.orderId, photo.picUrl]);
   });
 
-  // Product Sheet (Join Product and ProductOpt)
+  // --- Product Sheet ---
   const productSheet = workbook.addWorksheet("product");
   productSheet.addRow([
     "Product ID",
@@ -108,7 +152,7 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
     const opts = productOpts.filter(
       (opt) => opt.productId === product.productId
     );
-    if (opts.length > 0) {
+    if (opts.length) {
       opts.forEach((opt) => {
         productSheet.addRow([
           product.productId,
@@ -123,13 +167,42 @@ module.exports.exportExcel = tryCatch(async (req, res, next) => {
     }
   });
 
-  // Product Pic Sheet
+  // --- Product Pic Sheet ---
   const picSheet = workbook.addWorksheet("product_pic");
   picSheet.addRow(["Pic ID", "Product ID", "Rank", "URL"]);
   productPics.forEach((pic) => {
     picSheet.addRow([pic.productPicId, pic.productId, pic.rank, pic.url]);
   });
 
+  // --- Status Sheet ---
+  const statusSheet = workbook.addWorksheet("status");
+  statusSheet.addRow(["Status ID", "Name"]);
+  statuses.forEach((status) => {
+    statusSheet.addRow([status.statusId, status.name]);
+  });
+
+  // --- Coupon Sheet ---
+  const couponSheet = workbook.addWorksheet("coupon");
+  couponSheet.addRow([
+    "Coupon ID",
+    "Discount Code",
+    "Discount Type",
+    "Discount Amt",
+    "Max Discount Amt",
+    "Is Active",
+  ]);
+  coupons.forEach((c) => {
+    couponSheet.addRow([
+      c.couponId,
+      c.discountCode,
+      c.discountType,
+      c.discountAmt,
+      c.maxDiscountAmt,
+      c.isActive,
+    ]);
+  });
+
+  // Send Excel
   res.setHeader(
     "Content-Type",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

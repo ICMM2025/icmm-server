@@ -200,7 +200,8 @@ module.exports.addOrder = tryCatch(async (req, res, next) => {
 });
 
 module.exports.sendOrder = tryCatch(async (req, res, next) => {
-  const RECEIVE_ACC = "XXXXXXXXXXX1501";
+  const RECEIVE_ACC = "x-xxxx-xxxx5-61-8";
+  const RECEIVE_ACC_2 = "3-1012-0148x-xx-x";
   const { orderId } = req.body;
 
   if (!orderId || isNaN(orderId)) throw createError(400, "errInvalidOrderId");
@@ -271,9 +272,10 @@ module.exports.sendOrder = tryCatch(async (req, res, next) => {
         where: { orderId: Number(orderId) },
       });
 
+      // Validate
       const isSlipFail =
         slipAmount !== Number(currentOrder.grandTotalAmt) ||
-        receiverAcc !== RECEIVE_ACC;
+        ![RECEIVE_ACC, RECEIVE_ACC_2].includes(receiverAcc);
 
       slipData = {
         slipAmt: slipAmount,

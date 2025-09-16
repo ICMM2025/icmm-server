@@ -41,6 +41,7 @@ model ProductOpt {
   product      Product       @relation(fields: [productId], references: [productId], onDelete: Cascade)
   optName      String        @map("opt_name")
   price        Float?
+  isActive     Boolean?      @map("is_active")
   OrderDetail  OrderDetail[]
 
   @@map("product_opt")
@@ -54,6 +55,7 @@ model ProductPic {
   product      Product  @relation(fields: [productId], references: [productId], onDelete: Cascade)
   rank         Int
   url          String
+  isActive     Boolean?      @map("is_active")
 
   @@map("product_pic")
 }

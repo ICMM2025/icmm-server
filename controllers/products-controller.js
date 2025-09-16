@@ -8,8 +8,15 @@ module.exports.getProducts = tryCatch(async (req, res, next) => {
       isActive: true,
     },
     include: {
-      productOpts: true,
+      productOpts: {
+        where: {
+          isActive: true,
+        },
+      },
       productPics: {
+        where: {
+          isActive: true,
+        },
         orderBy: {
           rank: "asc",
         },
